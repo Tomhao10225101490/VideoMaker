@@ -132,6 +132,7 @@ class TestPiperTTS:
             return original_import(name, *args, **kwargs)
 
         monkeypatch.setattr(shutil, "which", lambda cmd: None if cmd == "piper" else original_which(cmd))
+        monkeypatch.setattr("tools.audio.piper_tts.extra_piper_paths", lambda: [])
         monkeypatch.setattr(builtins, "__import__", fake_import)
 
         assert PiperTTS().get_status() == ToolStatus.UNAVAILABLE

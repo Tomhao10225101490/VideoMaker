@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -128,6 +129,61 @@ def main() -> int:
     else:
         warnings.append("remotion-composer/node_modules missing — run make setup")
         print("    remotion node_modules: MISSING")
+
+    print("==> piper TTS")
+    try:
+        from tools.audio.piper_tts import (
+            DEFAULT_CHINESE_VOICE,
+            PiperTTS,
+            ensure_voice,
+            find_piper,
+        )
+
+        piper_bin = find_piper()
+        print(f"    piper    {piper_bin or 'MISSING'}")
+        if not piper_bin:
+            errors.append("piper CLI not found (install piper-tts in the venv)")
+        else:
+            voice_path = ensure_voice(DEFAULT_CHINESE_VOICE)
+            print(f"    voice    {voice_path}")
+            sample = ROOT / "projects" / "_preflight" / "piper-sample.wav"
+            sample.parent.mkdir(parents=True, exist_ok=True)
+            result = PiperTTS().execute(
+                {
+                    "text": "天空是蓝色的。",
+                    "model": DEFAULT_CHINESE_VOICE,
+                    "output_path": str(sample),
+                }
+            )
+            if not result.success:
+                errors.append(f"piper sample synthesis failed: {result.error}")
+            else:
+                probe = subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-i",
+                        str(sample),
+                        "-af",
+                        "volumedetect",
+                        "-f",
+                        "null",
+                        "-",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                mean = None
+                for line in (probe.stderr or "").splitlines():
+                    if "mean_volume" in line:
+                        try:
+                            mean = float(line.split("mean_volume:")[1].strip().split()[0])
+                        except (IndexError, ValueError):
+                            mean = None
+                print(f"    sample   {sample} mean_volume={mean} dB")
+                if mean is None or mean < -45:
+                    errors.append(f"piper sample is too quiet (mean_volume={mean})")
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"piper preflight failed: {exc}")
 
     print("==> provider menu (registry)")
     try:

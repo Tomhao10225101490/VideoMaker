@@ -1,0 +1,98 @@
+{
+  "id": "why-sky-is-blue",
+  "title": "为什么天空是蓝色的",
+  "theme": "flat-motion-graphics",
+  "voice": "zh_CN-huayan-medium",
+  "length_scale": 1.08,
+  "sentence_silence": 0.28,
+  "music_query": "calm piano educational background",
+  "caption_words_per_page": 12,
+  "caption_word_separator": "",
+  "segments": [
+    {
+      "id": "hook",
+      "narration": "你有没有想过：天空明明该是透明的，为什么看起来是蓝的，而不是紫的或者绿的？先别急着搜答案，我们用阳光和空气把这件事拆开。",
+      "cut": {
+        "type": "hero_title",
+        "text": "为什么天空是蓝色的",
+        "subtitle": "一分钟看懂瑞利散射"
+      }
+    },
+    {
+      "id": "sunlight",
+      "narration": "中午的阳光看起来是白色。白光并不是一种颜色，而是彩虹里红橙黄绿蓝靛紫叠在一起。",
+      "cut": {
+        "type": "text_card",
+        "text": "白光 = 彩虹叠在一起",
+        "subtitle": "太阳发出的是连续光谱"
+      }
+    },
+    {
+      "id": "atmosphere",
+      "narration": "光要穿过厚厚的大气，才能落到地面。一路上，它们不断撞上氮分子和氧分子。",
+      "cut": {
+        "type": "callout",
+        "title": "大气像一层滤镜",
+        "text": "氮和氧的分子，把入射阳光打散到各个方向。",
+        "callout_type": "info"
+      }
+    },
+    {
+      "id": "rayleigh",
+      "narration": "这种碰撞叫瑞利散射。波长越短，越容易被弹开。蓝光波长短，红光波长长。空气分子比光的波长小得多，所以短波特别吃亏。",
+      "cut": {
+        "type": "bar_chart",
+        "title": "越短的光，越容易被散射",
+        "chartData": [
+          { "label": "红", "value": 12 },
+          { "label": "橙", "value": 18 },
+          { "label": "绿", "value": 28 },
+          { "label": "蓝", "value": 48 }
+        ],
+        "chartColors": ["#F87171", "#FB923C", "#34D399", "#38BDF8"],
+        "showGrid": true,
+        "showValues": false
+      }
+    },
+    {
+      "id": "violet",
+      "narration": "紫光波长更短，按理该更显眼。可太阳发出的紫光更少，人眼对紫也不敏感，所以我们看到的是蓝。",
+      "cut": {
+        "type": "comparison",
+        "title": "为什么不是紫色？",
+        "leftLabel": "紫光",
+        "leftValue": "更短，但更弱",
+        "rightLabel": "蓝光",
+        "rightValue": "强，且人眼敏感"
+      }
+    },
+    {
+      "id": "overhead",
+      "narration": "于是你头顶的天空，被散射过来的蓝光填满了。这不是颜料，是空气在重新分配阳光。你抬头看见的那一层蓝，就是这样来的。",
+      "cut": {
+        "type": "stat_card",
+        "stat": "蓝",
+        "subtitle": "短波光被空气洒向四面八方"
+      }
+    },
+    {
+      "id": "sunset",
+      "narration": "早上和傍晚，阳光斜着走，路程更长。蓝光几乎散光了，剩下来的就是橙红色的晚霞。",
+      "cut": {
+        "type": "callout",
+        "title": "晚霞为什么红",
+        "text": "光程更长，蓝光被散射殆尽，长波的橙红留了下来。",
+        "callout_type": "tip"
+      }
+    },
+    {
+      "id": "close",
+      "narration": "记住：白天的蓝，不是天自己涂了色，是空气把短波光洒进了你的眼睛。",
+      "cut": {
+        "type": "hero_title",
+        "text": "空气在洒光",
+        "subtitle": "零成本科普 · VideoMaker"
+      }
+    }
+  ]
+}

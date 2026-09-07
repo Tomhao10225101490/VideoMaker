@@ -8,22 +8,39 @@
 
 | 能力 | 免费工具 | 说明 |
 |------|----------|------|
-| 旁白 | Piper TTS | `make setup` 会安装 `piper-tts`，完全离线 |
-| 成片（React） | Remotion | 把图文、数据卡、字幕编成 mp4 |
+| 旁白 | Piper TTS（`zh_CN-huayan-medium`） | `make setup` 安装 `piper-tts`；中文语音下载到 `models/piper/` |
+| 成片（React） | Remotion | 图文、数据卡、逐字字幕、旁白音轨 |
 | 成片（HTML/GSAP） | HyperFrames | 动态字幕、产品片；需要 Node.js |
-| 后期 | FFmpeg | 编码、字幕烧录、混音 |
+| 后期 | FFmpeg | 编码、混音、探测音量 |
 | 开源实拍 | Archive.org / NASA / Wikimedia | 真正的运动画面，不是静帧 Ken Burns |
-| 可选免费素材库 | Pexels / Pixabay / Unsplash | 开发者 Key 免费，但不是必须 |
+| 可选免费 BGM | Pixabay Music（无 Key） | 站点若 403，就只出旁白，不挡成片 |
 
-**不要填** `FAL_KEY`、`OPENAI_API_KEY`、`ELEVENLABS_API_KEY`、`KLING_API_KEY` 等付费生成密钥，除非你明确接受账单。`config.yaml` 里 `budget.mode` 为 `cap`，`total_usd` 为 `0.00`：估算大于 $0 的调用会被拦住。
+**不要填** `FAL_KEY`、`OPENAI_API_KEY`、`ELEVENLABS_API_KEY`、`KLING_API_KEY` 等付费生成密钥，除非你明确接受账单。`config.yaml` 里 `budget.mode` 为 `cap`，`total_usd` 为 `0.00`。
 
-## 三条免费路径
+## 官方 `make demo` 为什么没有声音
 
-1. **Remotion 演示（本轮默认）** — 不写脚本、不调网络生成，直接渲上游自带的零 Key demo。
-2. **图文解释片** — Piper 旁白 + 静图/图表，Remotion 做成动画（看起来像片子，不是付费文生视频）。
-3. **纪录蒙太奇** — 从 Archive.org / NASA / Wikimedia 拉实拍，剪成时间线。提示词里写清「只用真实素材」。
+上游三支 demo 的 props 里是 `"audio": {}`。Remotion 仍会 mux 一条**静音** AAC，所以 `ffprobe` 看得到音轨，耳朵听不到旁白。那是视觉组件展示片，不是科普成品。
 
-本环境没有 GPU。本地 WAN / Hunyuan 文生视频不在零成本默认路径里。
+发视频平台的教育/科普内容，请走下面的图文解释片路径。
+
+## 1–2 分钟中文科普（有声）
+
+```bash
+make setup
+python scripts/zero_cost_preflight.py          # 会试合成一句中文并检查音量
+python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
+```
+
+成片：`projects/why-sky-is-blue/renders/final.mp4`（gitignore）。验收记录见 [edu-proof.md](edu-proof.md)。
+
+换选题：复制 [`fixtures/zero-cost/why-sky-is-blue.json`](../fixtures/zero-cost/why-sky-is-blue.json)，改 `id`、`title`、每段 `narration` 和 `cut`（`hero_title` / `text_card` / `stat_card` / `bar_chart` / `callout` / `comparison`），再跑同一条命令。
+
+约定：
+
+- 时长 60–120 秒；结构：钩子 → 3–6 个知识点 → 收束
+- 画幅 16:9（B 站 / YouTube）。竖屏 9:16（抖音 / Shorts）本轮未改 Explainer 布局
+- **旁白必须有**；BGM 可缺；**字幕必须有**（平台默认静音刷）
+- 不要调文生图 / 文生视频
 
 ## 安装
 
@@ -34,40 +51,15 @@ make setup
 python scripts/zero_cost_preflight.py
 ```
 
-没有 `make` 时，见上游 README 的手动安装命令。
+中文语音约 60MB，第一次出片会下载到 `models/piper/`（`*.onnx` 已 gitignore）。
 
-## 第一支片子：官方 `make demo`
+## 官方无声 demo（仅验证画面）
 
 ```bash
 make demo
-# 或只渲一支：
-python render_demo.py world-in-numbers
-python render_demo.py --list
 ```
 
-三个零 Key Remotion 片子：
-
-- `world-in-numbers` — 全球尺度标题、数据、图表
-- `code-to-screen` — 开发工作流解释片
-- `focusflow-pitch` — 只用 Remotion 组件的创业 pitch
-
-成片路径（被 `.gitignore` 忽略，不要把大 mp4 提交进 git）：
-
-```text
-projects/demos/renders/world-in-numbers.mp4
-projects/demos/renders/code-to-screen.mp4
-projects/demos/renders/focusflow-pitch.mp4
-```
-
-用 `ffprobe` 检查分辨率、时长、是否有视频轨。探测记录模板见 [demo-proof.md](demo-proof.md)。
-
-## 下一步（本轮不做）
-
-- 用 Piper 做中文解释片（例如「为什么天是蓝的」）
-- 用 Archive.org / Wikimedia 做 60–90 秒纪录蒙太奇
-- 有 NVIDIA GPU 时再考虑 `make install-gpu` 本地视频生成
-
-这些仍然可以 $0，但需要完整 pipeline（research → proposal → script → scene_plan → assets → edit → compose），并遵守 `AGENT_GUIDE.md`。
+探测记录见 [demo-proof.md](demo-proof.md)。
 
 ## 以后想花钱时
 

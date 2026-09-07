@@ -308,6 +308,10 @@ export interface ExplainerProps {
   overlays?: Overlay[];
   captions?: WordCaption[];
   audio?: AudioConfig;
+  /** Separator between caption tokens. Pass "" for CJK. */
+  captionWordSeparator?: string;
+  /** How many caption tokens to show per page. */
+  captionWordsPerPage?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -876,11 +880,12 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
       {captions && captions.length > 0 && (
         <CaptionOverlay
           words={captions}
-          wordsPerPage={6}
+          wordsPerPage={typeof props.captionWordsPerPage === "number" ? props.captionWordsPerPage : 6}
           fontSize={42}
           color={theme.textColor}
           highlightColor={theme.captionHighlightColor}
           backgroundColor={theme.captionBackgroundColor}
+          wordSeparator={typeof props.captionWordSeparator === "string" ? props.captionWordSeparator : " "}
         />
       )}
 

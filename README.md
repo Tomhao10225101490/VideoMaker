@@ -1,9 +1,9 @@
 > **VideoMaker（本仓库）** 是 [OpenMontage](https://github.com/calesthio/OpenMontage) 的 AGPL-3.0 衍生项目，默认 **$0 预算帽**：不填付费 API Key 也能出片。
 >
 > - 中文零成本手册：[docs/ZERO_COST.zh.md](docs/ZERO_COST.zh.md)
-> - 上游中文 README：[README_zh-CN.md](README_zh-CN.md)
-> - 许可与来源：[NOTICE](NOTICE) · [LICENSE](LICENSE)（GNU AGPLv3，不是 MIT）
-> - 一键验证：`make setup` → `python scripts/zero_cost_preflight.py` → `make demo`
+> - 有声科普：`python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json`（官方 `make demo` 是无声展示片）
+> - 许可与来源：[NOTICE](NOTICE) · [LICENSE](LICENSE)（GNU AGPLv3）
+> - 检查：`python scripts/zero_cost_preflight.py`
 
 <p align="center">
   <picture>
