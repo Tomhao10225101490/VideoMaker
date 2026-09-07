@@ -1,0 +1,142 @@
+{
+  "id": "why-sky-is-blue",
+  "title": "为什么天空是蓝色的",
+  "theme": "flat-motion-graphics",
+  "tts": "edge",
+  "voice": "zh-CN-YunxiNeural",
+  "rate": "+10%",
+  "hook_rate": "+18%",
+  "volume": "+0%",
+  "length_scale": 0.92,
+  "sentence_silence": 0.12,
+  "noise_scale": 0.85,
+  "noise_w_scale": 0.95,
+  "motion_energy": "high",
+  "particles": {
+    "type": "sparkles",
+    "count": 36,
+    "color": "#7DD3FC",
+    "intensity": 0.78
+  },
+  "music_query": "calm piano educational background",
+  "caption_words_per_page": 8,
+  "caption_word_separator": "",
+  "segments": [
+    {
+      "id": "hook",
+      "narration": "停！先别划走。你抬头看过一万次天，真的知道它为啥是蓝的吗？透明的空气，怎么一看就蓝了？",
+      "cut": {
+        "type": "hero_title",
+        "text": "先别划走",
+        "subtitle": "天空为啥是蓝的？"
+      }
+    },
+    {
+      "id": "sunlight",
+      "narration": "重点来了。中午那团白光，根本不是一种颜色。红橙黄绿蓝靛紫，全叠在里面。",
+      "cut": {
+        "type": "text_card",
+        "text": "白光不是一种颜色"
+      },
+      "overlay": {
+        "type": "section_title",
+        "text": "重点来了",
+        "subtitle": "阳光其实是彩虹",
+        "position": "top-left",
+        "delay_seconds": 0.2
+      }
+    },
+    {
+      "id": "atmosphere",
+      "narration": "光要落到你眼睛里，先得穿过一层厚空气。氮分子、氧分子，一路把光撞散。你看见的蓝，就是撞出来的。",
+      "cut": {
+        "type": "callout",
+        "title": "空气在拦光",
+        "text": "氮和氧把阳光打散到四面八方。",
+        "callout_type": "info"
+      }
+    },
+    {
+      "id": "rayleigh",
+      "narration": "这招叫瑞利散射。记住：波长越短，越容易被弹飞。蓝光短，红光长。所以蓝光先被空气抢走。",
+      "cut": {
+        "type": "bar_chart",
+        "title": "越短的光，越容易被散射",
+        "chartData": [
+          { "label": "红", "value": 12 },
+          { "label": "橙", "value": 18 },
+          { "label": "绿", "value": 28 },
+          { "label": "蓝", "value": 48 }
+        ],
+        "chartColors": ["#F87171", "#FB923C", "#34D399", "#38BDF8"],
+        "chartAnimation": "pop",
+        "showGrid": true,
+        "showValues": false
+      },
+      "overlay": {
+        "type": "stat_reveal",
+        "text": "短波先散",
+        "subtitle": "瑞利散射",
+        "position": "bottom-right",
+        "delay_seconds": 0.35
+      }
+    },
+    {
+      "id": "violet",
+      "narration": "等等。紫光不是更短吗？为什么天空不是紫的？太阳紫光更少，人眼对紫也不敏感。所以赢的是蓝。",
+      "cut": {
+        "type": "comparison",
+        "title": "为什么不是紫色？",
+        "leftLabel": "紫光",
+        "leftValue": "更短，但更弱",
+        "rightLabel": "蓝光",
+        "rightValue": "强，且人眼敏感"
+      }
+    },
+    {
+      "id": "overhead",
+      "narration": "于是你头顶那一层蓝，不是颜料。是空气把短波光洒进你眼睛里。抬头看，那就是散射在发光。",
+      "cut": {
+        "type": "stat_card",
+        "stat": "蓝！",
+        "subtitle": "空气把短波光洒向四面八方"
+      }
+    },
+    {
+      "id": "clouds",
+      "narration": "你发现没有？云是白的。水滴太大，所有颜色一起散，就变成白。分子才专挑蓝光。",
+      "cut": {
+        "type": "callout",
+        "title": "云为什么是白的",
+        "text": "水滴太大，红到紫一起散射，叠起来就是白。",
+        "callout_type": "tip"
+      }
+    },
+    {
+      "id": "sunset",
+      "narration": "那晚霞为啥红？早上傍晚，阳光斜着走，路程更长。蓝光散光了，剩下来的就是橙红。",
+      "cut": {
+        "type": "callout",
+        "title": "晚霞为什么红",
+        "text": "光程更长，蓝光被散射殆尽，长波的橙红留了下来。",
+        "callout_type": "tip"
+      },
+      "overlay": {
+        "type": "stat_reveal",
+        "text": "光程更长",
+        "subtitle": "蓝光散光了",
+        "position": "bottom-right",
+        "delay_seconds": 0.25
+      }
+    },
+    {
+      "id": "close",
+      "narration": "记住这句话。白天的蓝，不是天自己涂的色。是空气在洒光。下次有人问你，就这么答。",
+      "cut": {
+        "type": "hero_title",
+        "text": "空气在洒光",
+        "subtitle": "零成本科普 · VideoMaker"
+      }
+    }
+  ]
+}

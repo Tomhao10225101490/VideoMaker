@@ -1,0 +1,31 @@
+---
+description: VideoMaker zero-cost overlay — never spend money unless the user opts in
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# VideoMaker 零成本默认
+
+This tree is an OpenMontage derivative with a **$0 budget cap**.
+Read `AGENT_GUIDE.md` first (upstream contract), then follow this overlay.
+
+## Hard rules
+
+- Default stack only: **Edge TTS** (free Microsoft neural voices, no key;
+  default `zh-CN-YunxiNeural`), **Piper TTS** (offline fallback),
+  **Remotion** / **HyperFrames** / **FFmpeg**,
+  and free/open footage from **Archive.org**, **NASA**, and **Wikimedia Commons**.
+- Do **not** call paid generation APIs (fal.ai, Kling, Veo, Sora, ElevenLabs,
+  OpenAI images/video, Suno, Runway, HeyGen, Atlas Cloud, etc.) unless the user
+  **explicitly** agrees to spend money and raises `config.yaml` `budget.total_usd`.
+- Leave paid keys in `.env` empty. Optional free developer keys (Pexels,
+  Pixabay, Unsplash) are allowed but not required.
+- `config.yaml` is `budget.mode: cap` and `budget.total_usd: 0.00`. Do not
+  silently raise the cap.
+- Prefer `make demo` / `render_demo.py` when the user only wants to prove the
+  zero-key Remotion path.
+
+## If a tool wants money
+
+Stop. Tell the user the paid provider, the estimate, and the free alternative
+(Piper, Remotion stills, open archives). Wait for explicit opt-in.
