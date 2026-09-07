@@ -38,7 +38,7 @@ python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 约定：
 
 - 时长 60–120 秒；结构：3 秒钩子 → 快切知识点 → 金句收束
-- 口播用短句、反问、「重点来了」这种营销号节奏。Piper 本身几乎没有情绪，靠稿子 + `length_scale`≈0.92、`sentence_silence`≈0.12 把气口打紧
+- 口播用短句、反问、「重点来了」这种营销号节奏。Piper 换不了 Edge 神经音色；出片脚本按句合成、句间气口、钩子略快（`length_scale` 0.88 / 0.92），concat 后走 `voice_clarity` 后期，字幕优先用 whisper 字级时间轴
 - 画面开 `motion_energy: high`：光斑更快、粒子（sparkles）+ 光束、图文弹簧弹入；不要付费文生视频
 - 画幅 16:9（B 站 / YouTube）。竖屏 9:16（抖音 / Shorts）本轮未改 Explainer 布局
 - **旁白必须有**；BGM 可缺；**字幕必须有**（平台默认静音刷）
