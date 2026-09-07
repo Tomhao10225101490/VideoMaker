@@ -3,43 +3,58 @@
   "title": "为什么天空是蓝色的",
   "theme": "flat-motion-graphics",
   "voice": "zh_CN-huayan-medium",
-  "length_scale": 1.08,
-  "sentence_silence": 0.28,
+  "length_scale": 0.92,
+  "sentence_silence": 0.12,
+  "noise_scale": 0.85,
+  "noise_w_scale": 0.95,
+  "motion_energy": "high",
+  "particles": {
+    "type": "sparkles",
+    "count": 36,
+    "color": "#7DD3FC",
+    "intensity": 0.78
+  },
   "music_query": "calm piano educational background",
-  "caption_words_per_page": 12,
+  "caption_words_per_page": 8,
   "caption_word_separator": "",
   "segments": [
     {
       "id": "hook",
-      "narration": "你有没有想过：天空明明该是透明的，为什么看起来是蓝的，而不是紫的或者绿的？先别急着搜答案，我们用阳光和空气把这件事拆开。",
+      "narration": "停！先别划走。你抬头看过一万次天，真的知道它为啥是蓝的吗？透明的空气，怎么一看就蓝了？",
       "cut": {
         "type": "hero_title",
-        "text": "为什么天空是蓝色的",
-        "subtitle": "一分钟看懂瑞利散射"
+        "text": "先别划走",
+        "subtitle": "天空为啥是蓝的？"
       }
     },
     {
       "id": "sunlight",
-      "narration": "中午的阳光看起来是白色。白光并不是一种颜色，而是彩虹里红橙黄绿蓝靛紫叠在一起。",
+      "narration": "重点来了。中午那团白光，根本不是一种颜色。红橙黄绿蓝靛紫，全叠在里面。",
       "cut": {
         "type": "text_card",
-        "text": "白光 = 彩虹叠在一起",
-        "subtitle": "太阳发出的是连续光谱"
+        "text": "白光不是一种颜色"
+      },
+      "overlay": {
+        "type": "section_title",
+        "text": "重点来了",
+        "subtitle": "阳光其实是彩虹",
+        "position": "top-left",
+        "delay_seconds": 0.2
       }
     },
     {
       "id": "atmosphere",
-      "narration": "光要穿过厚厚的大气，才能落到地面。一路上，它们不断撞上氮分子和氧分子。",
+      "narration": "光要落到你眼睛里，先得穿过一层厚空气。氮分子、氧分子，一路把光撞散。你看见的蓝，就是撞出来的。",
       "cut": {
         "type": "callout",
-        "title": "大气像一层滤镜",
-        "text": "氮和氧的分子，把入射阳光打散到各个方向。",
+        "title": "空气在拦光",
+        "text": "氮和氧把阳光打散到四面八方。",
         "callout_type": "info"
       }
     },
     {
       "id": "rayleigh",
-      "narration": "这种碰撞叫瑞利散射。波长越短，越容易被弹开。蓝光波长短，红光波长长。空气分子比光的波长小得多，所以短波特别吃亏。",
+      "narration": "这招叫瑞利散射。记住：波长越短，越容易被弹飞。蓝光短，红光长。所以蓝光先被空气抢走。",
       "cut": {
         "type": "bar_chart",
         "title": "越短的光，越容易被散射",
@@ -50,13 +65,21 @@
           { "label": "蓝", "value": 48 }
         ],
         "chartColors": ["#F87171", "#FB923C", "#34D399", "#38BDF8"],
+        "chartAnimation": "pop",
         "showGrid": true,
         "showValues": false
+      },
+      "overlay": {
+        "type": "stat_reveal",
+        "text": "短波先散",
+        "subtitle": "瑞利散射",
+        "position": "bottom-right",
+        "delay_seconds": 0.35
       }
     },
     {
       "id": "violet",
-      "narration": "紫光波长更短，按理该更显眼。可太阳发出的紫光更少，人眼对紫也不敏感，所以我们看到的是蓝。",
+      "narration": "等等。紫光不是更短吗？为什么天空不是紫的？太阳紫光更少，人眼对紫也不敏感。所以赢的是蓝。",
       "cut": {
         "type": "comparison",
         "title": "为什么不是紫色？",
@@ -68,26 +91,43 @@
     },
     {
       "id": "overhead",
-      "narration": "于是你头顶的天空，被散射过来的蓝光填满了。这不是颜料，是空气在重新分配阳光。你抬头看见的那一层蓝，就是这样来的。",
+      "narration": "于是你头顶那一层蓝，不是颜料。是空气把短波光洒进你眼睛里。抬头看，那就是散射在发光。",
       "cut": {
         "type": "stat_card",
-        "stat": "蓝",
-        "subtitle": "短波光被空气洒向四面八方"
+        "stat": "蓝！",
+        "subtitle": "空气把短波光洒向四面八方"
+      }
+    },
+    {
+      "id": "clouds",
+      "narration": "你发现没有？云是白的。水滴太大，所有颜色一起散，就变成白。分子才专挑蓝光。",
+      "cut": {
+        "type": "callout",
+        "title": "云为什么是白的",
+        "text": "水滴太大，红到紫一起散射，叠起来就是白。",
+        "callout_type": "tip"
       }
     },
     {
       "id": "sunset",
-      "narration": "早上和傍晚，阳光斜着走，路程更长。蓝光几乎散光了，剩下来的就是橙红色的晚霞。",
+      "narration": "那晚霞为啥红？早上傍晚，阳光斜着走，路程更长。蓝光散光了，剩下来的就是橙红。",
       "cut": {
         "type": "callout",
         "title": "晚霞为什么红",
         "text": "光程更长，蓝光被散射殆尽，长波的橙红留了下来。",
         "callout_type": "tip"
+      },
+      "overlay": {
+        "type": "stat_reveal",
+        "text": "光程更长",
+        "subtitle": "蓝光散光了",
+        "position": "bottom-right",
+        "delay_seconds": 0.25
       }
     },
     {
       "id": "close",
-      "narration": "记住：白天的蓝，不是天自己涂了色，是空气把短波光洒进了你的眼睛。",
+      "narration": "记住这句话。白天的蓝，不是天自己涂的色。是空气在洒光。下次有人问你，就这么答。",
       "cut": {
         "type": "hero_title",
         "text": "空气在洒光",

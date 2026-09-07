@@ -37,7 +37,9 @@ python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 
 约定：
 
-- 时长 60–120 秒；结构：钩子 → 3–6 个知识点 → 收束
+- 时长 60–120 秒；结构：3 秒钩子 → 快切知识点 → 金句收束
+- 口播用短句、反问、「重点来了」这种营销号节奏。Piper 本身几乎没有情绪，靠稿子 + `length_scale`≈0.92、`sentence_silence`≈0.12 把气口打紧
+- 画面开 `motion_energy: high`：光斑更快、粒子（sparkles）+ 光束、图文弹簧弹入；不要付费文生视频
 - 画幅 16:9（B 站 / YouTube）。竖屏 9:16（抖音 / Shorts）本轮未改 Explainer 布局
 - **旁白必须有**；BGM 可缺；**字幕必须有**（平台默认静音刷）
 - 不要调文生图 / 文生视频

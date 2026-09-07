@@ -142,6 +142,14 @@ class PiperTTS(BaseTool):
                 "type": "number",
                 "default": 0.3,
             },
+            "noise_scale": {
+                "type": "number",
+                "default": 0.667,
+            },
+            "noise_w_scale": {
+                "type": "number",
+                "default": 0.8,
+            },
             "output_path": {"type": "string"},
         },
     }
@@ -191,6 +199,8 @@ class PiperTTS(BaseTool):
             "--data-dir", str(model_file.parent),
             "--length-scale", str(inputs.get("length_scale", 1.0)),
             "--sentence-silence", str(inputs.get("sentence_silence", 0.3)),
+            "--noise-scale", str(inputs.get("noise_scale", 0.667)),
+            "--noise-w-scale", str(inputs.get("noise_w_scale", 0.8)),
             "--output_file", str(output_path),
         ]
         if "speaker_id" in inputs:

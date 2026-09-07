@@ -31,7 +31,7 @@ import { ScreenshotScene } from "./components/ScreenshotScene";
 import type { ScreenshotStep } from "./components/ScreenshotScene";
 import { ProviderChip } from "./components/ProviderChip";
 import { resolveAsset } from "./lib/resolveAsset";
-import type { ParticleType } from "./components/ParticleOverlay";
+import { ParticleOverlay, type ParticleType } from "./components/ParticleOverlay";
 import { resolveTheme, type ThemeConfig, DEFAULT_THEME } from "./Root";
 
 // Load Space Grotesk font for cinematic typography
@@ -62,13 +62,15 @@ function isLightColor(hex: string): boolean {
 // Scrim painted behind a hero title. It has to wash *away* from the theme's
 // text color: a dark scrim under a light theme's dark text drops the pair to
 // ~3.4:1, which is the same legibility bug in reverse.
-function heroScrim(theme: ThemeConfig): string {
+function heroScrim(theme: ThemeConfig, energy: "low" | "high" = "low"): string {
   const { r, g, b } = hexToRgb(
     isLightColor(theme.backgroundColor) ? "#FFFFFF" : "#0F172A"
   );
+  const inner = energy === "high" ? 0.08 : 0.35;
+  const outer = energy === "high" ? 0.22 : 0.55;
   return (
-    `radial-gradient(ellipse at center, rgba(${r},${g},${b},0.35) 0%, ` +
-    `rgba(${r},${g},${b},0.55) 100%)`
+    `radial-gradient(ellipse at center, rgba(${r},${g},${b},${inner}) 0%, ` +
+    `rgba(${r},${g},${b},${outer}) 100%)`
   );
 }
 
@@ -85,9 +87,14 @@ function shiftColor(hex: string, amount: number): string {
   return `rgb(${clamp(r + (255 - r) * amount)}, ${clamp(g + (255 - g) * amount)}, ${clamp(b + (255 - b) * amount)})`;
 }
 
-const AnimatedBackground: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
+const AnimatedBackground: React.FC<{ theme: ThemeConfig; energy?: "low" | "high" }> = ({
+  theme,
+  energy = "low",
+}) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+  const lively = energy === "high";
+  const drift = lively ? 2.6 : 1;
 
   const bg = theme.backgroundColor;
   const primary = theme.primaryColor;
@@ -95,8 +102,8 @@ const AnimatedBackground: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   const surface = theme.surfaceColor;
   const light = isLightColor(bg);
 
-  // Slow-moving gradient angles
-  const angle1 = 135 + Math.sin(frame / (fps * 8)) * 30;
+  // Slow-moving gradient angles (faster when energy is high)
+  const angle1 = 135 + Math.sin(frame / (fps * 8 / drift)) * (lively ? 48 : 30);
 
   // Build gradient from theme colors instead of hardcoded dark blue
   const { r: bgR, g: bgG, b: bgB } = hexToRgb(bg);
@@ -104,16 +111,16 @@ const AnimatedBackground: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   const { r: accR, g: accG, b: accB } = hexToRgb(accent);
 
   const gradient = `
-    radial-gradient(ellipse at ${30 + Math.sin(frame / (fps * 10)) * 20}% ${40 + Math.cos(frame / (fps * 8)) * 20}%,
-      rgba(${priR}, ${priG}, ${priB}, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at ${70 + Math.cos(frame / (fps * 7)) * 20}% ${60 + Math.sin(frame / (fps * 9)) * 25}%,
-      rgba(${accR}, ${accG}, ${accB}, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at ${30 + Math.sin(frame / (fps * 10 / drift)) * (lively ? 32 : 20)}% ${40 + Math.cos(frame / (fps * 8 / drift)) * (lively ? 28 : 20)}%,
+      rgba(${priR}, ${priG}, ${priB}, ${lively ? 0.32 : 0.15}) 0%, transparent 60%),
+    radial-gradient(ellipse at ${70 + Math.cos(frame / (fps * 7 / drift)) * (lively ? 30 : 20)}% ${60 + Math.sin(frame / (fps * 9 / drift)) * (lively ? 32 : 25)}%,
+      rgba(${accR}, ${accG}, ${accB}, ${lively ? 0.24 : 0.1}) 0%, transparent 55%),
     linear-gradient(${angle1}deg, ${bg} 0%, ${shiftColor(bg, light ? -0.05 : 0.05)} 40%, ${surface} 70%, ${bg} 100%)
   `;
 
   // Floating orbs — derived from theme chart colors with low opacity
   const orbColors = theme.chartColors.slice(0, 5);
-  const orbOpacity = light ? 0.06 : 0.08;
+  const orbOpacity = light ? (lively ? 0.14 : 0.06) : (lively ? 0.18 : 0.08);
   const orbs = [
     { x: 20, y: 30, size: 300, color: orbColors[0] || primary, speedX: 7, speedY: 11 },
     { x: 70, y: 60, size: 250, color: orbColors[1] || accent, speedX: 9, speedY: 8 },
@@ -132,8 +139,8 @@ const AnimatedBackground: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
     <AbsoluteFill style={{ background: gradient }}>
       {/* Floating glow orbs */}
       {orbs.map((orb, i) => {
-        const ox = orb.x + Math.sin(frame / (fps * orb.speedX)) * 15;
-        const oy = orb.y + Math.cos(frame / (fps * orb.speedY)) * 12;
+        const ox = orb.x + Math.sin(frame / (fps * orb.speedX / drift)) * (lively ? 28 : 15);
+        const oy = orb.y + Math.cos(frame / (fps * orb.speedY / drift)) * (lively ? 22 : 12);
         const { r, g, b } = hexToRgb(orb.color);
         return (
           <div
@@ -164,7 +171,8 @@ const AnimatedBackground: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
             linear-gradient(90deg, ${gridColor} 1px, transparent 1px)
           `,
           backgroundSize: "60px 60px",
-          opacity: 0.5 + Math.sin(frame / (fps * 20)) * 0.2,
+          opacity: 0.5 + Math.sin(frame / (fps * (lively ? 6 : 20))) * (lively ? 0.35 : 0.2),
+          transform: lively ? `translateY(${Math.sin(frame / (fps * 4)) * 8}px)` : undefined,
         }}
       />
 
@@ -312,6 +320,14 @@ export interface ExplainerProps {
   captionWordSeparator?: string;
   /** How many caption tokens to show per page. */
   captionWordsPerPage?: number;
+  /** Faster orbs / grid / particles. Default keeps the original slow mesh. */
+  motionEnergy?: "low" | "high";
+  particles?: {
+    type: ParticleType | "none";
+    count?: number;
+    color?: string;
+    intensity?: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +360,45 @@ const Vignette: React.FC = () => (
     }}
   />
 );
+
+const GRAPHIC_CUT_TYPES = new Set([
+  "text_card",
+  "stat_card",
+  "callout",
+  "comparison",
+  "hero_title",
+  "bar_chart",
+  "line_chart",
+  "pie_chart",
+  "kpi_grid",
+  "progress_bar",
+]);
+
+const GraphicEntrance: React.FC<{ children: React.ReactNode; punchy: boolean }> = ({
+  children,
+  punchy,
+}) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  if (!punchy) {
+    return <>{children}</>;
+  }
+  const progress = spring({
+    frame,
+    fps,
+    config: { damping: 13, mass: 0.65, stiffness: 180 },
+  });
+  return (
+    <AbsoluteFill
+      style={{
+        transform: `translateY(${interpolate(progress, [0, 1], [28, 0])}px) scale(${interpolate(progress, [0, 1], [0.97, 1])})`,
+        opacity: interpolate(progress, [0, 0.18, 1], [0, 1, 1]),
+      }}
+    >
+      {children}
+    </AbsoluteFill>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Enhanced Image Scene — spring physics, parallax, variety
@@ -559,7 +614,11 @@ const BackgroundVideoLayer: React.FC<{
   );
 };
 
-const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme }) => {
+const SceneRenderer: React.FC<{
+  cut: Cut;
+  theme: ThemeConfig;
+  energy?: "low" | "high";
+}> = ({ cut, theme, energy = "low" }) => {
   // Wrap component with background video or image if specified
   const maybeWrapWithBg = (element: React.ReactElement) => {
     if (cut.backgroundVideo) {
@@ -589,8 +648,12 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
   // Resolve the scene element based on cut type, then wrap with backgroundImage if set
   // Use transparent bg so the animated gradient background shows through
   // When no explicit backgroundColor on the cut, inherit from theme
+  const highEnergy = energy === "high";
   const rawBg = (cut.backgroundImage || cut.backgroundVideo) ? "transparent" : (cut.backgroundColor || theme.surfaceColor);
-  const bgColor = (rawBg === theme.backgroundColor || rawBg === "#0F172A" || rawBg === "#0f172a") ? "transparent" : rawBg;
+  const bgColor = highEnergy
+    ? (cut.backgroundColor || "transparent")
+    : (rawBg === theme.backgroundColor || rawBg === "#0F172A" || rawBg === "#0f172a") ? "transparent" : rawBg;
+  const cardSurface = highEnergy ? "transparent" : (cut.backgroundColor || theme.surfaceColor);
   const textColor = cut.color || theme.textColor;
   const accent = cut.accentColor || theme.accentColor;
 
@@ -610,7 +673,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
       <CalloutBox
         text={cut.text} type={cut.callout_type} title={cut.title}
         borderColor={accent} backgroundColor={cut.backgroundColor || theme.surfaceColor}
-        textColor={textColor} containerBackgroundColor={bgColor}
+        textColor={textColor} containerBackgroundColor={cardSurface}
       />
     );
   }
@@ -620,7 +683,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         leftLabel={cut.leftLabel} rightLabel={cut.rightLabel}
         leftValue={cut.leftValue} rightValue={cut.rightValue}
         title={cut.title} backgroundColor={bgColor} textColor={textColor}
-        cardBackgroundColor={cut.cardBackgroundColor || theme.surfaceColor}
+        cardBackgroundColor={highEnergy ? "rgba(30,41,59,0.55)" : (cut.cardBackgroundColor || theme.surfaceColor)}
       />
     );
   }
@@ -632,7 +695,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         accentColor={accent}
         textColor={textColor}
         subtitleColor={theme.mutedTextColor}
-        scrimBackground={heroScrim(theme)}
+        scrimBackground={heroScrim(theme, energy)}
       />
     );
   }
@@ -782,9 +845,14 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
 // Overlay renderer
 // ---------------------------------------------------------------------------
 
-const OverlayRenderer: React.FC<{ overlay: Overlay; theme: ThemeConfig }> = ({
+const OverlayRenderer: React.FC<{
+  overlay: Overlay;
+  theme: ThemeConfig;
+  energy?: "low" | "high";
+}> = ({
   overlay,
   theme,
+  energy = "low",
 }) => {
   if (overlay.type === "section_title") {
     return (
@@ -816,7 +884,7 @@ const OverlayRenderer: React.FC<{ overlay: Overlay; theme: ThemeConfig }> = ({
         accentColor={overlay.accentColor || theme.accentColor}
         textColor={theme.textColor}
         subtitleColor={theme.mutedTextColor}
-        scrimBackground={heroScrim(theme)}
+        scrimBackground={heroScrim(theme, energy)}
       />
     );
   }
@@ -844,11 +912,25 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
 
   // Resolve theme from props — playbook name, theme name, or custom themeConfig
   const theme = resolveTheme(props as Record<string, unknown>);
+  const motionEnergy: "low" | "high" = props.motionEnergy === "high" ? "high" : "low";
+  const highEnergy = motionEnergy === "high";
+  const particleType = props.particles?.type ?? (highEnergy ? "sparkles" : "none");
 
   return (
-    <AbsoluteFill style={{ background: theme.backgroundColor, fontFamily: theme.headingFont || fontFamily }}>
+    <AbsoluteFill style={{ background: highEnergy ? "transparent" : theme.backgroundColor, fontFamily: theme.headingFont || fontFamily }}>
       {/* Layer 0: Animated gradient background — driven by theme */}
-      <AnimatedBackground theme={theme} />
+      <AnimatedBackground theme={theme} energy={motionEnergy} />
+      {highEnergy ? (
+        <ParticleOverlay type="light-rays" count={7} color="#FFF7D6" intensity={0.32} />
+      ) : null}
+      {particleType !== "none" ? (
+        <ParticleOverlay
+          type={particleType}
+          count={props.particles?.count ?? (highEnergy ? 40 : 20)}
+          color={props.particles?.color ?? theme.accentColor}
+          intensity={props.particles?.intensity ?? (highEnergy ? 0.8 : 0.45)}
+        />
+      ) : null}
 
       {/* Layer 1: Visual scenes */}
       {cuts.map((cut) => {
@@ -857,7 +939,9 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
 
         return (
           <Sequence key={cut.id} from={from} durationInFrames={duration}>
-            <SceneRenderer cut={cut} theme={theme} />
+            <GraphicEntrance punchy={highEnergy && GRAPHIC_CUT_TYPES.has(cut.type || "")}>
+              <SceneRenderer cut={cut} theme={theme} energy={motionEnergy} />
+            </GraphicEntrance>
           </Sequence>
         );
       })}
@@ -871,7 +955,7 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
 
         return (
           <Sequence key={`overlay-${i}`} from={from} durationInFrames={duration}>
-            <OverlayRenderer overlay={overlay} theme={theme} />
+            <OverlayRenderer overlay={overlay} theme={theme} energy={motionEnergy} />
           </Sequence>
         );
       })}

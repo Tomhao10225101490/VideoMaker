@@ -159,6 +159,8 @@ def synthesize_segments(
     voice: str,
     length_scale: float,
     sentence_silence: float,
+    noise_scale: float = 0.667,
+    noise_w_scale: float = 0.8,
 ) -> tuple[Path, list[tuple[float, float]], list[dict[str, Any]]]:
     tts = PiperTTS()
     if tts.get_status().value != "available":
@@ -179,6 +181,8 @@ def synthesize_segments(
                 "output_path": str(wav_path),
                 "length_scale": length_scale,
                 "sentence_silence": sentence_silence,
+                "noise_scale": noise_scale,
+                "noise_w_scale": noise_w_scale,
             }
         )
         if not result.success:
@@ -198,6 +202,25 @@ def synthesize_segments(
     if volume is None or volume < -45:
         raise SystemExit(f"Narration looks too quiet (mean_volume={volume} dB)")
     return narration, spans, captions
+
+
+def overlays_from_spec(
+    spec: dict[str, Any],
+    spans: list[tuple[float, float]],
+) -> list[dict[str, Any]]:
+    overlays: list[dict[str, Any]] = []
+    for segment, (start, end) in zip(spec["segments"], spans):
+        raw = segment.get("overlay")
+        if not raw:
+            continue
+        item = dict(raw)
+        delay = float(item.pop("delay_seconds", 0.12))
+        pad = float(item.pop("end_pad_seconds", 0.05))
+        item["in_seconds"] = round(start + delay, 3)
+        item["out_seconds"] = round(max(item["in_seconds"] + 0.4, end - pad), 3)
+        overlays.append(item)
+    overlays.extend(spec.get("overlays") or [])
+    return overlays
 
 
 def build_props(
@@ -228,15 +251,19 @@ def build_props(
             "loop": True,
         }
 
-    return {
+    props: dict[str, Any] = {
         "theme": spec.get("theme", "flat-motion-graphics"),
         "cuts": cuts,
-        "overlays": spec.get("overlays", []),
+        "overlays": overlays_from_spec(spec, spans),
         "captions": captions,
         "captionWordSeparator": spec.get("caption_word_separator", ""),
-        "captionWordsPerPage": spec.get("caption_words_per_page", 12),
+        "captionWordsPerPage": spec.get("caption_words_per_page", 8),
         "audio": audio,
+        "motionEnergy": spec.get("motion_energy", "high"),
     }
+    if spec.get("particles"):
+        props["particles"] = spec["particles"]
+    return props
 
 
 def stage_public(project_id: str, narration: Path, music: Path | None) -> tuple[str, str | None]:
@@ -318,8 +345,10 @@ def main() -> int:
         spec["segments"],
         work_dir,
         voice=voice,
-        length_scale=float(spec.get("length_scale", 1.08)),
-        sentence_silence=float(spec.get("sentence_silence", 0.28)),
+        length_scale=float(spec.get("length_scale", 0.92)),
+        sentence_silence=float(spec.get("sentence_silence", 0.12)),
+        noise_scale=float(spec.get("noise_scale", 0.85)),
+        noise_w_scale=float(spec.get("noise_w_scale", 0.95)),
     )
     total = spans[-1][1] if spans else 0
     print(f"    total narration {total:.1f}s  captions={len(captions)}")
