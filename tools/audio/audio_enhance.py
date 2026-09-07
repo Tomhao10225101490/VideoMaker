@@ -22,6 +22,23 @@ from tools.base_tool import (
 )
 
 
+# FFmpeg loudnorm switches the graph to 192 kHz internally and leaves the
+# output there unless we resample. Chromium / Safari / Remotion <Audio>
+# often fail to decode 192 kHz WAV, so the player looks like a silent video.
+PLAYBACK_SAMPLE_RATE = 48000
+
+
+def _with_playback_rate(af: str, sample_rate: int) -> str:
+    """Keep loudnorm, but always emit a web-safe sample rate."""
+    compact = af.replace(" ", "")
+    marker = f"aresample={sample_rate}"
+    if marker in compact:
+        return af
+    if "loudnorm=" not in compact:
+        return af
+    return f"{af},{marker}"
+
+
 PRESETS = {
     "clean_speech": {
         "description": "Noise gate + highpass + compressor + limiter for clean dialogue",
@@ -116,6 +133,14 @@ class AudioEnhance(BaseTool):
             },
             "audio_codec": {"type": "string", "default": "aac"},
             "audio_bitrate": {"type": "string", "default": "192k"},
+            "sample_rate": {
+                "type": "integer",
+                "default": PLAYBACK_SAMPLE_RATE,
+                "description": (
+                    "Output sample rate. loudnorm internally uses 192 kHz; "
+                    "this resamples back so browsers can actually play the file."
+                ),
+            },
         },
     }
 
@@ -137,6 +162,12 @@ class AudioEnhance(BaseTool):
         )
         audio_codec = inputs.get("audio_codec", "aac")
         audio_bitrate = inputs.get("audio_bitrate", "192k")
+        try:
+            sample_rate = int(inputs.get("sample_rate", PLAYBACK_SAMPLE_RATE) or PLAYBACK_SAMPLE_RATE)
+        except (TypeError, ValueError):
+            sample_rate = PLAYBACK_SAMPLE_RATE
+        if sample_rate < 8000 or sample_rate > 48000:
+            sample_rate = PLAYBACK_SAMPLE_RATE
 
         af = inputs.get("custom_af")
         if not af:
@@ -145,6 +176,7 @@ class AudioEnhance(BaseTool):
             if not preset:
                 return ToolResult(success=False, error=f"Unknown preset: {preset_name}")
             af = preset["af"]
+        af = _with_playback_rate(str(af), sample_rate)
 
         start = time.time()
 
@@ -158,7 +190,13 @@ class AudioEnhance(BaseTool):
         ]
         if is_video:
             cmd.extend(["-c:v", "copy"])
-        cmd.extend(["-c:a", audio_codec, "-b:a", audio_bitrate])
+        cmd.extend(
+            [
+                "-c:a", audio_codec,
+                "-b:a", audio_bitrate,
+                "-ar", str(sample_rate),
+            ]
+        )
         cmd.append(str(output_path))
 
         try:
@@ -175,6 +213,7 @@ class AudioEnhance(BaseTool):
                 "output": str(output_path),
                 "preset": inputs.get("preset"),
                 "filter": af,
+                "sample_rate": sample_rate,
             },
             artifacts=[str(output_path)],
             duration_seconds=round(elapsed, 2),

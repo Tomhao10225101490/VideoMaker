@@ -38,7 +38,8 @@ python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 约定：
 
 - 时长 60–120 秒；结构：3 秒钩子 → 快切知识点 → 金句收束
-- 口播默认 **Edge TTS YunxiNeural**（ai_video01 同款免费神经声，`rate +10%`，钩子 `+18%`）。按句合成 + WordBoundary 字幕；断网时回退 Piper。concat 后走 `voice_clarity` 后期
+- 口播默认 **Edge TTS YunxiNeural**（ai_video01 同款免费神经声，`rate +10%`，钩子 `+18%`）。按句合成 + WordBoundary 字幕；断网时回退 Piper。concat 后走 `voice_clarity` 后期，**强制 48 kHz**（FFmpeg `loudnorm` 会把 WAV 升到 192 kHz，Chrome / Safari / Remotion 预览播不出来，看起来像无声）
+- 成片在 Remotion 之后会再 mux 一条 AAC-LC 48 kHz 立体声旁白，避免只靠 Chromium 解 192 kHz WAV
 - 画面开 `motion_energy: high`：光斑更快、粒子（sparkles）+ 光束、图文弹簧弹入；不要付费文生视频
 - 画幅 16:9（B 站 / YouTube）。竖屏 9:16（抖音 / Shorts）本轮未改 Explainer 布局
 - **旁白必须有**；BGM 可缺；**字幕必须有**（平台默认静音刷）

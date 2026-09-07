@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -300,9 +301,32 @@ def align_captions_with_whisper(
     return aligned
 
 
+def write_playback_wav(src: Path, dest: Path, sample_rate: int = 48000) -> Path:
+    """Resample to a rate Chromium / Safari / HTML5 video can actually play."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(src),
+            "-ar",
+            str(sample_rate),
+            "-ac",
+            "1",
+            "-c:a",
+            "pcm_s16le",
+            str(dest),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return dest
+
+
 def enhance_narration(narration: Path) -> Path:
     try:
-        from tools.audio.audio_enhance import AudioEnhance
+        from tools.audio.audio_enhance import PLAYBACK_SAMPLE_RATE, AudioEnhance
 
         enhanced = narration.with_name("narration_enhanced.wav")
         result = AudioEnhance().execute(
@@ -311,6 +335,7 @@ def enhance_narration(narration: Path) -> Path:
                 "output_path": str(enhanced),
                 "preset": "voice_clarity",
                 "audio_codec": "pcm_s16le",
+                "sample_rate": PLAYBACK_SAMPLE_RATE,
             }
         )
     except Exception as exc:  # noqa: BLE001
@@ -319,7 +344,21 @@ def enhance_narration(narration: Path) -> Path:
     if not result.success or not enhanced.exists() or enhanced.stat().st_size == 0:
         print(f"    enhance skipped: {getattr(result, 'error', 'missing output')}")
         return narration
-    print(f"    enhance voice_clarity → {enhanced}")
+    try:
+        rate = probe_sample_rate(enhanced)
+    except (ValueError, subprocess.CalledProcessError):
+        rate = 0
+    if rate > 48000:
+        print(f"    enhance sample_rate {rate} Hz is not web-safe, resampling to 48000")
+        tmp = enhanced.with_name(f".{enhanced.stem}-48k-{time.time_ns()}.wav")
+        try:
+            write_playback_wav(enhanced, tmp, 48000)
+            tmp.replace(enhanced)
+        finally:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+        rate = 48000
+    print(f"    enhance voice_clarity → {enhanced}  sample_rate={rate}")
     return enhanced
 
 
@@ -603,11 +642,76 @@ def build_props(
     return props
 
 
+def mux_narration_into_video(video_path: Path, narration: Path) -> None:
+    """Replace Remotion's audio with a 48 kHz stereo AAC track from the TTS wav.
+
+    Remotion can mux a track that ffmpeg hears but browsers drop when the
+    source WAV was 192 kHz (loudnorm leftover). Re-encode from the playback
+    wav so the delivered MP4 is AAC-LC 48 kHz stereo + faststart.
+    """
+    temp_output = video_path.with_name(
+        f".{video_path.stem}.audible-{time.time_ns()}{video_path.suffix}"
+    )
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(video_path),
+                "-i",
+                str(narration),
+                "-map",
+                "0:v:0",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-profile:a",
+                "aac_low",
+                "-b:a",
+                "192k",
+                "-ar",
+                "48000",
+                "-ac",
+                "2",
+                "-af",
+                "apad",
+                "-shortest",
+                "-movflags",
+                "+faststart",
+                str(temp_output),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        if not temp_output.is_file() or temp_output.stat().st_size == 0:
+            raise SystemExit("Audio mux produced an empty file")
+        temp_output.replace(video_path)
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or b"").decode("utf-8", errors="replace")[-800:]
+        raise SystemExit(f"Could not mux narration into video: {stderr}") from exc
+    finally:
+        if temp_output.exists():
+            temp_output.unlink(missing_ok=True)
+
+
 def stage_public(project_id: str, narration: Path, music: Path | None) -> tuple[str, str | None]:
     dest_dir = PUBLIC_DIR / "zero-cost" / project_id
     dest_dir.mkdir(parents=True, exist_ok=True)
     nar_name = "narration.wav"
-    shutil.copy2(narration, dest_dir / nar_name)
+    dest_wav = dest_dir / nar_name
+    try:
+        rate = probe_sample_rate(narration)
+    except (ValueError, subprocess.CalledProcessError):
+        rate = 0
+    if rate == 48000:
+        shutil.copy2(narration, dest_wav)
+    else:
+        write_playback_wav(narration, dest_wav, 48000)
+        print(f"    staged narration resampled {rate} → 48000 Hz")
     music_rel = None
     if music and music.exists():
         ext = music.suffix or ".mp3"
@@ -647,11 +751,20 @@ def verify_output(path: Path) -> None:
         raise SystemExit(f"Render produced no file: {path}")
     duration = probe_duration(path)
     volume = mean_volume_db(path)
-    print(f"==> output {path}  duration={duration:.2f}s  mean_volume={volume} dB  size={path.stat().st_size}")
+    try:
+        rate = probe_sample_rate(path)
+    except (ValueError, subprocess.CalledProcessError):
+        rate = 0
+    print(
+        f"==> output {path}  duration={duration:.2f}s  mean_volume={volume} dB  "
+        f"audio_rate={rate}  size={path.stat().st_size}"
+    )
     if duration < 50:
         raise SystemExit(f"Video too short for a 1-2 minute explainer template: {duration:.1f}s")
     if volume is None or volume < -45:
         raise SystemExit(f"Final video still sounds silent (mean_volume={volume} dB)")
+    if rate > 48000:
+        raise SystemExit(f"Audio sample rate {rate} Hz will be silent in browsers")
 
 
 def main() -> int:
@@ -741,6 +854,10 @@ def main() -> int:
         return 0
 
     render_explainer(props_path, output_path)
+    public_wav = PUBLIC_DIR / "zero-cost" / project_id / "narration.wav"
+    mux_src = public_wav if public_wav.exists() else narration
+    mux_narration_into_video(output_path, mux_src)
+    print(f"    muxed 48 kHz AAC from {mux_src}")
     verify_output(output_path)
     print("==> OK")
     return 0
