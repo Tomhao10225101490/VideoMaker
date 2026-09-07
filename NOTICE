@@ -1,0 +1,22 @@
+VideoMaker — OpenMontage derivative
+===================================
+
+This repository is a derivative of OpenMontage, an open-source agentic
+video production system.
+
+  Upstream: https://github.com/calesthio/OpenMontage
+  Imported commit: 08e2151fa02de28a5d6a312b3d575692bf147ad7
+  ("docs: add Objects in Overdrive video showcase")
+
+OpenMontage is licensed under the GNU Affero General Public License
+v3.0 (AGPL-3.0). This VideoMaker tree therefore uses the same license.
+See the file LICENSE for the full terms.
+
+Copyright for upstream OpenMontage code remains with the original
+authors and contributors. VideoMaker-specific overlay files (zero-cost
+defaults, Chinese docs, Cursor rules, and preflight helpers) are also
+released under AGPL-3.0.
+
+Do not relicense this tree as MIT. The original placeholder MIT LICENSE
+in Tomhao10225101490/VideoMaker was replaced because it cannot cover
+OpenMontage source.

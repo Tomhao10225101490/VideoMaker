@@ -1,3 +1,10 @@
+> **VideoMaker（本仓库）** 是 [OpenMontage](https://github.com/calesthio/OpenMontage) 的 AGPL-3.0 衍生项目，默认 **$0 预算帽**：不填付费 API Key 也能出片。
+>
+> - 中文零成本手册：[docs/ZERO_COST.zh.md](docs/ZERO_COST.zh.md)
+> - 上游中文 README：[README_zh-CN.md](README_zh-CN.md)
+> - 许可与来源：[NOTICE](NOTICE) · [LICENSE](LICENSE)（GNU AGPLv3，不是 MIT）
+> - 一键验证：`make setup` → `python scripts/zero_cost_preflight.py` → `make demo`
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/monty-dark.svg">
