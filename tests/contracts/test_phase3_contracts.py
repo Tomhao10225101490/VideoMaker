@@ -138,7 +138,32 @@ class TestPiperTTS:
         assert PiperTTS().get_status() == ToolStatus.UNAVAILABLE
 
 
-class TestGoogleTTS:
+class TestEdgeTTS:
+    def test_identity(self):
+        from tools.audio.edge_tts import EdgeTTS
+
+        tool = EdgeTTS()
+        info = tool.get_info()
+        assert info["name"] == "edge_tts"
+        assert info["tier"] == "voice"
+        assert info["capability"] == "tts"
+        assert info["provider"] == "edge"
+        assert tool.estimate_cost({"text": "anything"}) == 0.0
+        assert "word_timestamps" in tool.capabilities
+        assert tool.fallback == "piper_tts"
+
+    def test_status_unavailable_without_ffmpeg(self, monkeypatch):
+        from tools.audio.edge_tts import EdgeTTS
+
+        monkeypatch.setattr("tools.audio.edge_tts.shutil.which", lambda _cmd: None)
+        assert EdgeTTS().get_status() == ToolStatus.UNAVAILABLE
+
+    def test_truncation_heuristic(self):
+        from tools.audio.edge_tts import looks_truncated
+
+        words = [{"word": "蓝的吗"}]
+        assert looks_truncated("真的知道它为啥是蓝的吗？后面还有很多字没读出来。", words)
+        assert not looks_truncated("真的知道它为啥是蓝的吗？", words)
     def test_identity(self):
         tool = GoogleTTS()
         info = tool.get_info()

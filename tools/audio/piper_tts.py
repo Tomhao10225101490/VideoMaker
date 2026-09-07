@@ -113,7 +113,6 @@ class PiperTTS(BaseTool):
     }
     best_for = [
         "offline narration fallback",
-        "zero-cost Chinese explainer narration",
         "privacy-sensitive local-only workflows",
     ]
     not_good_for = [

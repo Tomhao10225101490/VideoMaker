@@ -2,8 +2,9 @@
 
     python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 
-Uses Piper TTS (offline), Remotion Explainer scenes, optional Pixabay BGM.
-No paid API keys. Output: projects/<id>/renders/final.mp4
+Uses free Edge TTS (YunxiNeural) by default, Piper offline fallback,
+Remotion Explainer scenes, optional Pixabay BGM. No paid API keys.
+Output: projects/<id>/renders/final.mp4
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools.audio.piper_tts import (  # noqa: E402
-    DEFAULT_CHINESE_VOICE,
+    DEFAULT_CHINESE_VOICE as PIPER_CHINESE_VOICE,
     PiperTTS,
     ensure_voice,
     find_piper,
@@ -226,6 +227,23 @@ def captions_for_text(text: str, start_s: float, end_s: float) -> list[dict[str,
     return captions
 
 
+def offset_captions(captions: list[dict[str, Any]], offset_s: float) -> list[dict[str, Any]]:
+    shift = int(round(offset_s * 1000))
+    out = []
+    for cue in captions:
+        item = dict(cue)
+        item["startMs"] = int(item["startMs"]) + shift
+        item["endMs"] = int(item["endMs"]) + shift
+        out.append(item)
+    return out
+
+
+def captions_cover_enough(captions: list[dict[str, Any]], source_text: str) -> bool:
+    got = len(spoken_chars("".join(c["word"] for c in captions)))
+    need = len(spoken_chars(source_text))
+    return bool(captions) and (need < 20 or got >= need * 0.7)
+
+
 def captions_from_word_timestamps(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
     captions: list[dict[str, Any]] = []
     for item in words:
@@ -327,7 +345,60 @@ def try_music(query: str, dest: Path) -> Path | None:
     return None
 
 
-def synthesize_sentence(
+def edge_rate_for_sentence(segment_id: str, sentence: str, base_rate: str, hook_rate: str) -> str:
+    if segment_id in HOOK_SEGMENT_IDS or sentence.endswith(("！", "？")):
+        return hook_rate
+    return base_rate
+
+
+def pick_tts_engine(requested: str) -> str:
+    wanted = (requested or "edge").strip().lower()
+    if wanted == "piper":
+        return "piper"
+    try:
+        from tools.audio.edge_tts import EdgeTTS
+
+        if EdgeTTS().get_status().value == "available":
+            return "edge"
+    except Exception:  # noqa: BLE001
+        pass
+    print("    edge TTS unavailable, falling back to Piper")
+    return "piper"
+
+
+def synthesize_sentence_edge(
+    text: str,
+    wav_path: Path,
+    voice: str,
+    rate: str,
+    volume: str,
+) -> tuple[float, list[dict[str, Any]]]:
+    from tools.audio.edge_tts import EdgeTTS
+
+    wav_path.parent.mkdir(parents=True, exist_ok=True)
+    result = EdgeTTS().execute(
+        {
+            "text": text,
+            "voice": voice,
+            "rate": rate,
+            "volume": volume,
+            "output_path": str(wav_path),
+        }
+    )
+    if not result.success:
+        raise RuntimeError(result.error or "Edge TTS failed")
+    duration = probe_duration(wav_path)
+    words = result.data.get("word_timestamps") or []
+    if words:
+        local = captions_from_word_timestamps(words)
+    else:
+        local = captions_for_text(text, 0.0, duration)
+    if local and text.endswith(tuple(PUNCT_BREAK)):
+        local[-1]["pageBreakAfter"] = True
+    return duration, local
+
+
+def synthesize_sentence_piper(
     tts: PiperTTS,
     text: str,
     wav_path: Path,
@@ -335,7 +406,7 @@ def synthesize_sentence(
     length_scale: float,
     noise_scale: float,
     noise_w_scale: float,
-) -> float:
+) -> tuple[float, list[dict[str, Any]]]:
     wav_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "text": text,
@@ -356,58 +427,97 @@ def synthesize_sentence(
         if not result.success:
             raise SystemExit(f"Piper retry failed: {result.error}")
         duration = probe_duration(wav_path)
-    return duration
+    return duration, captions_for_text(text, 0.0, duration)
 
 
 def synthesize_segments(
     segments: list[dict[str, Any]],
     work_dir: Path,
+    *,
+    engine: str,
     voice: str,
     length_scale: float,
     sentence_silence: float,
     noise_scale: float = 0.667,
     noise_w_scale: float = 0.8,
+    edge_rate: str = "+10%",
+    edge_hook_rate: str = "+18%",
+    edge_volume: str = "+0%",
 ) -> tuple[Path, list[tuple[float, float]], list[dict[str, Any]]]:
-    del sentence_silence  # per-sentence pads replace Piper's paragraph silence
-    tts = PiperTTS()
-    if tts.get_status().value != "available":
-        raise SystemExit("Piper TTS is not available. Run make setup and install piper-tts.")
-    ensure_voice(voice)
-
+    del sentence_silence
     tts_dir = work_dir / "tts"
     tts_dir.mkdir(parents=True, exist_ok=True)
+
+    piper: PiperTTS | None = None
+    if engine == "piper":
+        piper = PiperTTS()
+        if piper.get_status().value != "available":
+            raise SystemExit("Piper TTS is not available. Run make setup and install piper-tts.")
+        ensure_voice(voice)
 
     parts: list[Path] = []
     spans: list[tuple[float, float]] = []
     captions: list[dict[str, Any]] = []
     cursor = 0.0
-    sample_rate = 22050
+    sample_rate = 24000 if engine == "edge" else 22050
     silence_index = 0
-    total_sentences = sum(len(split_sentences(str(seg["narration"]))) for seg in segments)
+    total_sentences = sum(len(split_sentences(str(seg["narration"]))) or 1 for seg in segments)
     rendered = 0
+    active_engine = engine
 
     for index, segment in enumerate(segments):
         text = str(segment["narration"]).strip()
         sentences = split_sentences(text) or [text]
         seg_start = cursor
         for sent_i, sentence in enumerate(sentences):
-            scale = sentence_length_scale(str(segment["id"]), sentence, length_scale)
             wav_path = tts_dir / f"{index:02d}-{segment['id']}-{sent_i:02d}.wav"
-            duration = synthesize_sentence(
-                tts,
-                sentence,
-                wav_path,
-                voice=voice,
-                length_scale=scale,
-                noise_scale=noise_scale,
-                noise_w_scale=noise_w_scale,
-            )
+            local_captions: list[dict[str, Any]]
+            if active_engine == "edge":
+                try:
+                    duration, local_captions = synthesize_sentence_edge(
+                        sentence,
+                        wav_path,
+                        voice=voice,
+                        rate=edge_rate_for_sentence(
+                            str(segment["id"]), sentence, edge_rate, edge_hook_rate
+                        ),
+                        volume=edge_volume,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    print(f"    edge failed ({exc}); remaining sentences use Piper")
+                    active_engine = "piper"
+                    piper = PiperTTS()
+                    if piper.get_status().value != "available":
+                        raise SystemExit(f"Edge TTS failed and Piper is unavailable: {exc}") from exc
+                    fallback_voice = PIPER_CHINESE_VOICE
+                    ensure_voice(fallback_voice)
+                    voice = fallback_voice
+                    duration, local_captions = synthesize_sentence_piper(
+                        piper,
+                        sentence,
+                        wav_path,
+                        voice=voice,
+                        length_scale=sentence_length_scale(str(segment["id"]), sentence, length_scale),
+                        noise_scale=noise_scale,
+                        noise_w_scale=noise_w_scale,
+                    )
+            else:
+                assert piper is not None
+                duration, local_captions = synthesize_sentence_piper(
+                    piper,
+                    sentence,
+                    wav_path,
+                    voice=voice,
+                    length_scale=sentence_length_scale(str(segment["id"]), sentence, length_scale),
+                    noise_scale=noise_scale,
+                    noise_w_scale=noise_w_scale,
+                )
             if not parts:
                 try:
                     sample_rate = probe_sample_rate(wav_path)
                 except (ValueError, subprocess.CalledProcessError):
-                    sample_rate = 22050
-            captions.extend(captions_for_text(sentence, cursor, cursor + duration))
+                    pass
+            captions.extend(offset_captions(local_captions, cursor))
             parts.append(wav_path)
             cursor += duration
             rendered += 1
@@ -425,7 +535,7 @@ def synthesize_segments(
     narration = work_dir / "narration.wav"
     concat_wavs(parts, narration, sample_rate=sample_rate)
     volume = mean_volume_db(narration)
-    print(f"    narration {narration}  duration={probe_duration(narration):.2f}s  mean_volume={volume}")
+    print(f"    narration {narration}  duration={probe_duration(narration):.2f}s  mean_volume={volume}  engine={active_engine}")
     if volume is None or volume < -45:
         raise SystemExit(f"Narration looks too quiet (mean_volume={volume} dB)")
     return narration, spans, captions
@@ -545,7 +655,7 @@ def verify_output(path: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Zero-cost Chinese explainer with Piper narration")
+    parser = argparse.ArgumentParser(description="Zero-cost Chinese explainer (Edge TTS, Piper fallback)")
     parser.add_argument(
         "spec",
         nargs="?",
@@ -554,28 +664,44 @@ def main() -> int:
     )
     parser.add_argument("--skip-music", action="store_true")
     parser.add_argument("--no-render", action="store_true", help="Write props and audio only")
+    parser.add_argument("--tts", choices=("edge", "piper"), help="Override fixture tts engine")
     args = parser.parse_args()
 
     spec_path = Path(args.spec).resolve()
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     project_id = spec["id"]
-    voice = spec.get("voice", DEFAULT_CHINESE_VOICE)
+    engine = pick_tts_engine(args.tts or spec.get("tts") or "edge")
+    if engine == "edge":
+        from tools.audio.edge_tts import DEFAULT_CHINESE_VOICE as EDGE_VOICE
+
+        voice = spec.get("voice") or EDGE_VOICE
+        if not str(voice).startswith("zh-"):
+            voice = EDGE_VOICE
+    else:
+        voice = spec.get("voice") or PIPER_CHINESE_VOICE
+        if str(voice).startswith("zh-CN-"):
+            voice = PIPER_CHINESE_VOICE
     work_dir = ROOT / "projects" / project_id
     work_dir.mkdir(parents=True, exist_ok=True)
 
     print("==> zero-cost explainer")
     print(f"    spec={spec_path}")
+    print(f"    engine={engine}")
     print(f"    piper={find_piper()}")
     print(f"    voice={voice}")
 
-    narration, spans, fallback_captions = synthesize_segments(
+    narration, spans, boundary_captions = synthesize_segments(
         spec["segments"],
         work_dir,
+        engine=engine,
         voice=voice,
         length_scale=float(spec.get("length_scale", 0.92)),
         sentence_silence=float(spec.get("sentence_silence", 0.12)),
         noise_scale=float(spec.get("noise_scale", 0.85)),
         noise_w_scale=float(spec.get("noise_w_scale", 0.95)),
+        edge_rate=str(spec.get("rate", "+10%")),
+        edge_hook_rate=str(spec.get("hook_rate", "+18%")),
+        edge_volume=str(spec.get("volume", "+0%")),
     )
     raw_end = spans[-1][1] if spans else 0.0
     narration = enhance_narration(narration)
@@ -583,12 +709,16 @@ def main() -> int:
     if raw_end > 0 and abs(enhanced_dur - raw_end) > 0.08:
         ratio = enhanced_dur / raw_end
         spans = [(s * ratio, e * ratio) for s, e in spans]
-        for cue in fallback_captions:
+        for cue in boundary_captions:
             cue["startMs"] = int(round(cue["startMs"] * ratio))
             cue["endMs"] = int(round(cue["endMs"] * ratio))
         print(f"    enhance duration {raw_end:.2f}s → {enhanced_dur:.2f}s, scaled timeline")
     source_text = "".join(str(seg["narration"]) for seg in spec["segments"])
-    captions = align_captions_with_whisper(narration, fallback_captions, source_text)
+    if engine == "edge" and captions_cover_enough(boundary_captions, source_text):
+        captions = boundary_captions
+        print(f"    captions Edge WordBoundary cues={len(captions)}")
+    else:
+        captions = align_captions_with_whisper(narration, boundary_captions, source_text)
     total = spans[-1][1] if spans else 0
     print(f"    total narration {enhanced_dur:.1f}s  scene_span={total:.1f}s  captions={len(captions)}")
 

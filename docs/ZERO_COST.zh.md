@@ -8,7 +8,7 @@
 
 | 能力 | 免费工具 | 说明 |
 |------|----------|------|
-| 旁白 | Piper TTS（`zh_CN-huayan-medium`） | `make setup` 安装 `piper-tts`；中文语音下载到 `models/piper/` |
+| 旁白 | Edge TTS（`zh-CN-YunxiNeural`） | 免费微软神经语音，无 Key，需联网。离线回退 Piper `zh_CN-huayan-medium` |
 | 成片（React） | Remotion | 图文、数据卡、逐字字幕、旁白音轨 |
 | 成片（HTML/GSAP） | HyperFrames | 动态字幕、产品片；需要 Node.js |
 | 后期 | FFmpeg | 编码、混音、探测音量 |
@@ -38,7 +38,7 @@ python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 约定：
 
 - 时长 60–120 秒；结构：3 秒钩子 → 快切知识点 → 金句收束
-- 口播用短句、反问、「重点来了」这种营销号节奏。Piper 换不了 Edge 神经音色；出片脚本按句合成、句间气口、钩子略快（`length_scale` 0.88 / 0.92），concat 后走 `voice_clarity` 后期，字幕优先用 whisper 字级时间轴
+- 口播默认 **Edge TTS YunxiNeural**（ai_video01 同款免费神经声，`rate +10%`，钩子 `+18%`）。按句合成 + WordBoundary 字幕；断网时回退 Piper。concat 后走 `voice_clarity` 后期
 - 画面开 `motion_energy: high`：光斑更快、粒子（sparkles）+ 光束、图文弹簧弹入；不要付费文生视频
 - 画幅 16:9（B 站 / YouTube）。竖屏 9:16（抖音 / Shorts）本轮未改 Explainer 布局
 - **旁白必须有**；BGM 可缺；**字幕必须有**（平台默认静音刷）
@@ -53,7 +53,7 @@ make setup
 python scripts/zero_cost_preflight.py
 ```
 
-中文语音约 60MB，第一次出片会下载到 `models/piper/`（`*.onnx` 已 gitignore）。
+中文语音：默认 **Edge TTS**（`pip install edge-tts`，需联网）。离线可装 Piper（约 60MB，第一次出片会下载到 `models/piper/`，`*.onnx` 已 gitignore）。
 
 ## 官方无声 demo（仅验证画面）
 

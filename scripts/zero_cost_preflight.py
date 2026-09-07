@@ -130,7 +130,61 @@ def main() -> int:
         warnings.append("remotion-composer/node_modules missing — run make setup")
         print("    remotion node_modules: MISSING")
 
-    print("==> piper TTS")
+    edge_ok = False
+    print("==> edge TTS (free neural, default explainer voice)")
+    try:
+        from tools.audio.edge_tts import DEFAULT_CHINESE_VOICE, EdgeTTS
+
+        edge = EdgeTTS()
+        print(f"    status   {edge.get_status().value}")
+        if edge.get_status().value == "available":
+            sample = ROOT / "projects" / "_preflight" / "edge-sample.wav"
+            sample.parent.mkdir(parents=True, exist_ok=True)
+            result = edge.execute(
+                {
+                    "text": "先别划走。",
+                    "voice": DEFAULT_CHINESE_VOICE,
+                    "rate": "+10%",
+                    "output_path": str(sample),
+                }
+            )
+            if not result.success:
+                warnings.append(f"edge sample failed (Piper remains fallback): {result.error}")
+                print(f"    sample   FAIL {result.error}")
+            else:
+                probe = subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-i",
+                        str(sample),
+                        "-af",
+                        "volumedetect",
+                        "-f",
+                        "null",
+                        "-",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                mean = None
+                for line in (probe.stderr or "").splitlines():
+                    if "mean_volume" in line:
+                        try:
+                            mean = float(line.split("mean_volume:")[1].strip().split()[0])
+                        except (IndexError, ValueError):
+                            mean = None
+                print(f"    sample   {sample} mean_volume={mean} dB voice={DEFAULT_CHINESE_VOICE}")
+                if mean is not None and mean < -45:
+                    warnings.append(f"edge sample is quiet (mean_volume={mean})")
+                else:
+                    edge_ok = True
+        else:
+            warnings.append("edge-tts not installed — explainer will use Piper")
+    except Exception as exc:  # noqa: BLE001
+        warnings.append(f"edge preflight failed: {exc}")
+
+    piper_ok = False
+    print("==> piper TTS (offline fallback)")
     try:
         from tools.audio.piper_tts import (
             DEFAULT_CHINESE_VOICE,
@@ -142,7 +196,7 @@ def main() -> int:
         piper_bin = find_piper()
         print(f"    piper    {piper_bin or 'MISSING'}")
         if not piper_bin:
-            errors.append("piper CLI not found (install piper-tts in the venv)")
+            warnings.append("piper CLI not found (needed only if Edge TTS is offline)")
         else:
             voice_path = ensure_voice(DEFAULT_CHINESE_VOICE)
             print(f"    voice    {voice_path}")
@@ -182,8 +236,13 @@ def main() -> int:
                 print(f"    sample   {sample} mean_volume={mean} dB")
                 if mean is None or mean < -45:
                     errors.append(f"piper sample is too quiet (mean_volume={mean})")
+                else:
+                    piper_ok = True
     except Exception as exc:  # noqa: BLE001
         errors.append(f"piper preflight failed: {exc}")
+
+    if not edge_ok and not piper_ok:
+        errors.append("No free TTS works — install edge-tts (network) or piper-tts (offline)")
 
     print("==> provider menu (registry)")
     try:

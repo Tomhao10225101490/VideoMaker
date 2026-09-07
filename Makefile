@@ -58,8 +58,9 @@ setup: ensure-venv
 	@echo "==> Installing Remotion composer..."
 	cd remotion-composer && npm install
 	@echo ""
-	@echo "==> Installing free offline TTS (Piper)..."
-	$(PIP) install piper-tts || echo "  [skip] piper-tts install failed — TTS will use cloud providers instead"
+	@echo "==> Installing free TTS (Edge neural + Piper offline fallback)..."
+	$(PIP) install edge-tts || echo "  [skip] edge-tts install failed — explainer will fall back to Piper"
+	$(PIP) install piper-tts || echo "  [skip] piper-tts install failed — TTS will use Edge or cloud providers instead"
 	@echo ""
 	@echo "==> Installing HyperFrames runtime (cache-warm via npx)..."
 	@echo "    Pulls the 'hyperframes' npm package into the local npx cache so the"

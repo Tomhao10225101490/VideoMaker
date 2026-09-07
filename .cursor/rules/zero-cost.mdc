@@ -11,7 +11,9 @@ Read `AGENT_GUIDE.md` first (upstream contract), then follow this overlay.
 
 ## Hard rules
 
-- Default stack only: **Piper TTS**, **Remotion** / **HyperFrames** / **FFmpeg**,
+- Default stack only: **Edge TTS** (free Microsoft neural voices, no key;
+  default `zh-CN-YunxiNeural`), **Piper TTS** (offline fallback),
+  **Remotion** / **HyperFrames** / **FFmpeg**,
   and free/open footage from **Archive.org**, **NASA**, and **Wikimedia Commons**.
 - Do **not** call paid generation APIs (fal.ai, Kling, Veo, Sora, ElevenLabs,
   OpenAI images/video, Suno, Runway, HeyGen, Atlas Cloud, etc.) unless the user

@@ -1,5 +1,6 @@
 # OpenMontage - Core Dependencies
 pyyaml>=6.0
+edge-tts>=6.1
 pydantic>=2.0
 jsonschema>=4.20
 python-dotenv>=1.0
