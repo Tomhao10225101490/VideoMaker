@@ -14,14 +14,16 @@ python scripts/zero_cost_explainer.py fixtures/zero-cost/why-sky-is-blue.json
 
 | 项 | 值 |
 |----|----|
-| 时长 | 96.58s |
+| 时长 | 96.53s |
 | 分辨率 | 1920×1080 30fps |
 | 视频 | h264 |
-| 音频 | aac stereo 48kHz |
-| 音量 | 成片 mean **-21.6 dB**；增强旁白 **-18.6 dB** |
-| 体积 | 38.6 MB |
+| 音频 | AAC-LC stereo **48 kHz**（旁白 WAV 同样 48 kHz，不再是 loudnorm 留下的 192 kHz） |
+| 音量 | 成片 mean **-21.6 dB**；增强旁白 **-18.6 dB**；开头 3s max **-4.5 dB** |
+| 体积 | 36.5 MB |
 | 旁白 | Edge TTS YunxiNeural，engine=edge |
 | 字幕 | WordBoundary **313** cues |
+
+此前成片「看起来没声音」：`voice_clarity` 的 `loudnorm` 把旁白升到 192 kHz，Chrome / Safari / Remotion 预览解不了。现已 resample + 成片后再 mux AAC。
 
 钩子帧（「先别划走」+ 光束/闪点）：
 
